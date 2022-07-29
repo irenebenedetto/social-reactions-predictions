@@ -1,25 +1,21 @@
 import pandas as pd
-import numpy as np
 from sklearn.model_selection import train_test_split, ParameterGrid
-import json
-from sklearn.feature_extraction.text import TfidfVectorizer
-from scipy.sparse import hstack
-import pickle as pkl
 import argparse
 import os
-from sklearn.metrics import mean_squared_error, mean_absolute_error, median_absolute_error, mean_absolute_percentage_error
-from tqdm import tqdm 
+
 
 
 if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--output_folder', type=str, help='Output folder')
-    parser.add_argument('--input_data_folder', type=str, help='Input folder')
-    args = parser.parse_args()
+	parser.add_argument('--output_folder', type=str, help='Output folder')
+	parser.add_argument('--input_data_folder', type=str, help='Input folder')
+	args = parser.parse_args()
 
 
 	TEST_SIZE = 0.2
+	DEV_SIZE = 0.1
+
 	df = pd.read_csv(f'{args.input_data_folder}/data.csv', index_col='id')
 
 
@@ -84,10 +80,6 @@ if __name__ == "__main__":
 	ys.to_csv(f'{args.output_folder}/ys.csv')
 	baseline.to_csv(f'{args.output_folder}/baseline.csv')
 
-
-	TEST_SIZE = 0.2
-	DEV_SIZE = 0.1
-
 	X_train, X_test, ys_train, ys_test = train_test_split(X, ys, test_size=(TEST_SIZE + DEV_SIZE))
 	X_val, X_test, ys_val, ys_test = train_test_split(X_test, ys_test, test_size=TEST_SIZE/(TEST_SIZE + DEV_SIZE))
 
@@ -101,6 +93,6 @@ if __name__ == "__main__":
 	ys_test.to_csv(f'{args.output_folder}/ys_test.csv')
 	ys_val.to_csv(f'{args.output_folder}/ys_val.csv')
 
-	print(f"X_train shape: {X_train.shape} ({ round(X_train.shape[0]/(X_train.shape[0]+X_val.shape[0]+X_test.shape[0]) ,2) }%)")
-	print(f"X_val shape: {X_val.shape} ({ round(X_val.shape[0]/(X_train.shape[0]+X_val.shape[0]+X_test.shape[0]) ,2) }%)")
-	print(f"X_test shape: {X_test.shape} ({ round(X_test.shape[0]/(X_train.shape[0]+X_val.shape[0]+X_test.shape[0]) ,2) }%)")
+	print(f"X_train shape: {X_train.shape} ({ 100*round(X_train.shape[0]/(X_train.shape[0]+X_val.shape[0]+X_test.shape[0]) ,2) }%)")
+	print(f"X_val shape: {X_val.shape} ({ 100*round(X_val.shape[0]/(X_train.shape[0]+X_val.shape[0]+X_test.shape[0]) ,2) }%)")
+	print(f"X_test shape: {X_test.shape} ({ 100*round(X_test.shape[0]/(X_train.shape[0]+X_val.shape[0]+X_test.shape[0]) ,2) }%)")

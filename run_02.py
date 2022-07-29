@@ -20,6 +20,7 @@ if __name__ == "__main__":
     parser.add_argument('--output_folder', type=str, help='Output folder')
     parser.add_argument('--input_data_folder', type=str, help='Input folder')
 
+    args = parser.parse_args()
     MODEL_PATH = 'xlm-roberta-base'
     BATCH_SIZE = 16
     N_EPOCHS = 10

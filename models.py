@@ -1,6 +1,5 @@
 
 from transformers import AutoTokenizer, AutoModel
-
 import torch
 import numpy as np
 import random
@@ -13,21 +12,32 @@ import json
 import argparse
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-criterion = torch.nn.L1Loss(reduce='mean')
+l1_loss = torch.nn.L1Loss(reduce='mean')
+rmsle_loss = RMSLELoss()
 
-def myLoss(outputs, labels):
+
+class RMSLELoss(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.mse = torch.nn.MSELoss()
+
+    def forward(self, pred, actual):
+        return torch.sqrt(self.mse(torch.log(pred + 1), torch.log(actual + 1)))
+
+
+def myLoss(outputs, labels, alpha=1):
     # (batch size, 5)
-    loss = criterion(outputs, labels)
+    loss = l1_loss(outputs, labels) + alpha * rmsle_loss(outputs, labels)
     return loss
 
 class RobertaRegressorTextOnly(torch.nn.Module):
-    def __init__(self, n_regression, model_path = 'xlm-roberta-base'):
+    def __init__(self, n_regression, model_path='xlm-roberta-base'):
         super(RobertaRegressorTextOnly, self).__init__()
-        
+
         self.fe = AutoModel.from_pretrained(model_path)
 
         self.regressor = torch.nn.Sequential(
-            torch.nn.Dropout(0.1),
+            torch.nn.Dropout(0.9),
             torch.nn.Linear(768, n_regression),  # 1024 or 768
             torch.nn.ReLU()
         )
@@ -43,22 +53,19 @@ class InfluencerDatasetTextOnly(torch.utils.data.Dataset):
                  labels_path: str,
                  model_path: str,
                  max_document_length: int = 512):
-        
         self.documents = pd.read_csv(dataset_path, index_col=0)['content'].values
         self.labels = pd.read_csv(labels_path, index_col=0).values
         self.max_document_length = max_document_length
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
-        
 
     def __len__(self):
         """Denotes the number of batches per epoch"""
         return len(self.documents)
 
     def vectorize_data(self, document):
-        
         x = self.tokenizer(document,
-            max_length=self.max_document_length, padding='max_length',
-            truncation=True)
+                           max_length=self.max_document_length, padding='max_length',
+                           truncation=True)
         x['input_ids'] = torch.tensor(x['input_ids']).to(device)
         x['attention_mask'] = torch.tensor(x['attention_mask']).to(device)
 
@@ -69,9 +76,9 @@ class InfluencerDatasetTextOnly(torch.utils.data.Dataset):
 
         text = self.documents[index]
         y = self.labels[index]
-
         x = self.vectorize_data(text)
         return x, y
+
 
 
 class RobertaRegressorWithMetadata(torch.nn.Module):
@@ -81,7 +88,7 @@ class RobertaRegressorWithMetadata(torch.nn.Module):
         self.fe = AutoModel.from_pretrained(model_path)
 
         self.regressor = torch.nn.Sequential(
-            torch.nn.Dropout(0.1),
+            torch.nn.Dropout(0.2),
             torch.nn.Linear(768 + 8, n_regression),  # 1024 or 768
             torch.nn.ReLU()
         )
@@ -98,10 +105,8 @@ class InfluencerDatasetWithMetadata(torch.utils.data.Dataset):
                  labels_path: str,
                  model_path: str,
                  max_document_length: int = 512,
-                 mean: np.array = None, 
-                 std:  np.array = None):
-      
-
+                 mean: np.array = None,
+                 std: np.array = None):
         structured_cols = [
             'name',
             'type',
@@ -112,33 +117,30 @@ class InfluencerDatasetWithMetadata(torch.utils.data.Dataset):
             'hour',
             'minute'
         ]
-        
+
         data = pd.read_csv(dataset_path, index_col=0)
         self.documents = data['content'].values
         self.structured_info = data[structured_cols].values
         if mean is None and std is None:
             mean, std = self.structured_info.mean(), self.structured_info.std()
-            
-            
-        self.mean = mean 
+
+        self.mean = mean
         self.std = std
         self.structured_info = (self.structured_info - self.mean) / self.std
-        self.structured_info = self.structured_info.astype(np.float32) 
-        
+        self.structured_info = self.structured_info.astype(np.float32)
+
         self.labels = pd.read_csv(labels_path, index_col=0).values
         self.max_document_length = max_document_length
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
-        
 
     def __len__(self):
         """Denotes the number of batches per epoch"""
         return len(self.documents)
 
     def vectorize_data(self, document):
-        
         x = self.tokenizer(document,
-            max_length=self.max_document_length, padding='max_length',
-            truncation=True)
+                           max_length=self.max_document_length, padding='max_length',
+                           truncation=True)
         x['input_ids'] = torch.tensor(x['input_ids']).to(device)
         x['attention_mask'] = torch.tensor(x['attention_mask']).to(device)
 
@@ -149,8 +151,10 @@ class InfluencerDatasetWithMetadata(torch.utils.data.Dataset):
 
         text = self.documents[index]
         x_str = torch.tensor(self.structured_info[index]).to(device)
-
         y = self.labels[index]
-
         x = self.vectorize_data(text)
         return x, x_str, y
+
+
+
+

@@ -16,10 +16,10 @@ if __name__ == "__main__":
 	TEST_SIZE = 0.2
 	DEV_SIZE = 0.1
 
-	df = pd.read_csv(f'{args.input_data_folder}/data.csv', index_col='id')
+	df = pd.read_csv(f'{args.input_data_folder}/data-mega.csv', index_col='id')
 
-
-	df.drop('Unnamed: 0', inplace=True, axis = 1)
+	if 'Unnamed: 0' in df.columns:
+		df.drop('Unnamed: 0', inplace=True, axis = 1)
 
 	df['date'] = df['date'].astype('datetime64[ns]')
 	df['type'] = df['type'].astype('category')

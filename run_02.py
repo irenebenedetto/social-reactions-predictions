@@ -25,7 +25,7 @@ if __name__ == "__main__":
     BATCH_SIZE = 16
     N_EPOCHS = 1
     LR = 1e-5
-    LOAD_CHECKPOINT = False #Â'{args.input_data_folder}/model_checkpoint.pt'
+    LOAD_CHECKPOINT = False #ï¿½'{args.input_data_folder}/model_checkpoint.pt'
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model = RobertaRegressorTextOnly(n_regression = 10, model_path=MODEL_PATH ).to(device)
 
@@ -57,22 +57,18 @@ if __name__ == "__main__":
     training_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=BATCH_SIZE)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=BATCH_SIZE)
-    criterion = torch.nn.L1Loss(reduce='sum')
-
     optimizer = torch.optim.AdamW(model.parameters(), lr=LR)
-
-
-
     writer = SummaryWriter(f'{output_folder}/logs')
     output_folder = '.'
     last_loss = 0
-    for epoch_index in range(N_EPOCHS):
 
-        model.train()
+    # Train and validate
+    for epoch_index in range(N_EPOCHS):
 
         running_loss = 0.0
         print(f'Epochs {epoch_index + 1}/{N_EPOCHS}')
         for i, data in enumerate(training_loader):
+            model.train()
             # Every data instance is an input + label pair
             inputs, labels = data
             labels = labels.type(torch.float)
@@ -81,21 +77,21 @@ if __name__ == "__main__":
             outputs = model(inputs).cpu()
             loss = myLoss(outputs, labels)
 
-            loss.mean().backward()
+            loss.backward()
             optimizer.step()
 
             # Gather data and report
             running_loss += loss.item()
-            
-            if i % 1000 == 0:
-                model.eval()
-                torch.save(model.state_dict(), f'{output_folder}/model_checkpoint.pt')
-                model.train()
-                print(f'Train batch loss: {round(running_loss / ((i + 1)*BATCH_SIZE), 5)}')
-                
 
-        print(f'Train batch loss: {round(running_loss / ((i + 1)*BATCH_SIZE), 5)}')
-        writer.add_scalar("Loss/train", running_loss / ((i + 1)*BATCH_SIZE), epoch_index)
+            if i % 3000 == 0:
+                model.eval()
+                torch.save(model.state_dict(), f'{output_folder}/checkpoints-model-LR-{LR}.pt')
+                model.train()
+                print(f'Iter {i + 1}, train batch loss: {round(running_loss / ((i + 1) * BATCH_SIZE), 5)}')
+                writer.add_scalar("Loss/train", running_loss / ((i + 1) * BATCH_SIZE), i * (epoch_index + 1))
+
+        print(f'Train batch loss: {round(running_loss / ((i + 1) * BATCH_SIZE), 5)}')
+        writer.add_scalar("Loss/train", running_loss / ((i + 1) * BATCH_SIZE), i*(epoch_index+1))
 
         model.eval()
         l1loss = 0.0
@@ -105,25 +101,21 @@ if __name__ == "__main__":
                 inputs, labels = data
                 outputs = model(inputs)
                 labels = labels.type(torch.float).to(device)
-
                 loss = myLoss(outputs, labels)
                 l1loss += loss.item()
 
-
-            l1loss = np.mean(l1loss)
-            if l1loss > last_loss:
+            if l1loss < last_loss:
                 last_loss = l1loss
                 print(f"Saving checkpoint {epoch_index}")
-
                 model.eval()
-                torch.save(model.state_dict(), f'{output_folder}/model_best_val.pt')
+                torch.save(model.state_dict(), f'{output_folder}/best-model-val-LR-{LR}.pt')
                 model.train()
         print()
-
 
     test_predictions = []
     test_labels = []
 
+    # Test
     with torch.no_grad():
       for j, data in tqdm(enumerate(test_loader)):
         inputs, labels = data
@@ -154,7 +146,7 @@ if __name__ == "__main__":
     output.reset_index(inplace=True)
     ys_test.reset_index(inplace=True)
     output = pd.concat([output,  ys_test], axis = 1)
-    output.to_csv(f'{output_folder}/test_prediction.csv')
+    output.to_csv(f'{output_folder}/test_predictions-LR-{LR}.csv')
 
 
     results = {}
@@ -173,5 +165,5 @@ if __name__ == "__main__":
         }
 
 
-    with open(f'{output_folder}/test_scores.json', 'w') as f:
+    with open(f'{output_folder}/test_scores-LR-{LR}.json', 'w') as f:
         json.dump(results, f)

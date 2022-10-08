@@ -23,9 +23,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     MODEL_PATH = 'xlm-roberta-base'
     BATCH_SIZE = 16
-    N_EPOCHS = 10
+    N_EPOCHS = 1
     LR = 1e-5
-    #LOAD_CHECKPOINT = '{args.input_data_folder}/model_checkpoint.pt'
+    LOAD_CHECKPOINT = False #Â'{args.input_data_folder}/model_checkpoint.pt'
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model = RobertaRegressorTextOnly(n_regression = 10, model_path=MODEL_PATH ).to(device)
 

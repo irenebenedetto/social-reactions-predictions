@@ -22,17 +22,17 @@ if __name__ == "__main__":
     parser.add_argument('--input_data_folder', type=str, help='Input folder')
 
     args = parser.parse_args()
+    output_folder = args.output_folder
+    input_folder = args.input_data_folder
     MODEL_PATH = 'xlm-roberta-base'
+    LOAD_CHECKPOINT = f'{output_folder}/checkpoints-model.pt'
     BATCH_SIZE = 16
-    N_EPOCHS = 10
+    N_EPOCHS = 1
     LR = 1e-5
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model = RobertaRegressorWithMetadata(n_regression = 10, model_path=MODEL_PATH).to(device)
     tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-
-    output_folder = args.output_folder
-    input_folder = args.input_data_folder
-
+    model.load_state_dict(torch.load(LOAD_CHECKPOINT))
 
     train_dataset = InfluencerDatasetWithMetadata(
         f'{input_folder}/X_train.csv',
@@ -63,9 +63,8 @@ if __name__ == "__main__":
     optimizer = torch.optim.AdamW(model.parameters(), lr=LR)
    
     writer = SummaryWriter(f'{output_folder}/logs')
-    output_folder = '.'
     last_l1loss = 1e12
-    
+    """
     for epoch_index in range(N_EPOCHS):
 
             model.train()
@@ -80,7 +79,7 @@ if __name__ == "__main__":
 
                 optimizer.zero_grad()
                 outputs = model(inputs_text, inputs_str).cpu()
-                loss = myLoss(outputs, labels).mean()
+                loss = myLoss(outputs, labels)
 
                 loss.backward()
                 optimizer.step()
@@ -122,6 +121,7 @@ if __name__ == "__main__":
                     model.train()
             print()
 
+    """
     model.eval()
     test_predictions = []
     test_labels = []
@@ -150,7 +150,7 @@ if __name__ == "__main__":
     cols_pred = [f"pred_{y_col}" for y_col in reactions]
     cols_gt = [f"actual_{y_col}" for y_col in reactions]
 
-    X_test = pd.read_csv(f'{input_folder}/X_test.csv', index_col='id')
+    X_test = pd.read_csv(f'{input_folder}/X_test.csv', index_col=0)
 
     predictions = pd.DataFrame(test_predictions, columns = cols_pred)
     ys_test = pd.DataFrame(test_labels, columns = cols_gt)

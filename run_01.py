@@ -43,13 +43,13 @@ if __name__ == "__main__":
               'actual_shareCount'
     ]
 
-    X_train = pd.read_csv(f'{input_folder}/dataset/X_train.csv', index_col='id')
-    X_test = pd.read_csv(f'{input_folder}/dataset/X_test.csv', index_col='id')
-    X_val = pd.read_csv(f'{input_folder}/dataset/X_val.csv', index_col='id')
+    X_train = pd.read_csv(f'{input_folder}/dataset-log/X_train.csv', index_col=0)
+    X_test = pd.read_csv(f'{input_folder}/dataset-log/X_test.csv', index_col=0)
+    X_val = pd.read_csv(f'{input_folder}/dataset-log/X_val.csv', index_col=0)
 
-    ys_train = pd.read_csv(f'{input_folder}/dataset/ys_train.csv', index_col='id')
-    ys_test = pd.read_csv(f'{input_folder}/dataset/ys_test.csv', index_col='id')
-    ys_val = pd.read_csv(f'{input_folder}/dataset/ys_val.csv', index_col='id')
+    ys_train = pd.read_csv(f'{input_folder}/dataset-log/ys_train.csv', index_col=0)
+    ys_test = pd.read_csv(f'{input_folder}/dataset-log/ys_test.csv', index_col=0)
+    ys_val = pd.read_csv(f'{input_folder}/dataset-log/ys_val.csv', index_col=0)
 
     # encode text
     vectorizer = TfidfVectorizer()
@@ -183,7 +183,9 @@ if __name__ == "__main__":
 
         output = pd.concat([X_test, predictions], axis=1)
         output.reset_index(inplace=True)
-        ys_test.reset_index(inplace=True)
+        print(ys_test)
+        ys_test.reset_index(drop=True, inplace=True)
+        print(ys_test)
         output = pd.concat([output, ys_test], axis=1)
 
         output.to_csv(f'{input_folder}/1.results/{model_name}/test_predictions.csv', index=None)

@@ -12,6 +12,8 @@ import os
 import json
 import argparse
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+criterion = torch.nn.L1Loss(reduce='mean')
 
 def myLoss(outputs, labels):
     # (batch size, 5)
@@ -20,7 +22,7 @@ def myLoss(outputs, labels):
 
 class RobertaRegressorTextOnly(torch.nn.Module):
     def __init__(self, n_regression, model_path = 'xlm-roberta-base'):
-        super(RobertaRegressor, self).__init__()
+        super(RobertaRegressorTextOnly, self).__init__()
         
         self.fe = AutoModel.from_pretrained(model_path)
 
@@ -42,8 +44,8 @@ class InfluencerDatasetTextOnly(torch.utils.data.Dataset):
                  model_path: str,
                  max_document_length: int = 512):
         
-        self.documents = pd.read_csv(dataset_path, index_col='id')['content'].values
-        self.labels = pd.read_csv(labels_path, index_col='id').values
+        self.documents = pd.read_csv(dataset_path, index_col=0)['content'].values
+        self.labels = pd.read_csv(labels_path, index_col=0).values
         self.max_document_length = max_document_length
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         
@@ -74,7 +76,7 @@ class InfluencerDatasetTextOnly(torch.utils.data.Dataset):
 
 class RobertaRegressorWithMetadata(torch.nn.Module):
     def __init__(self, n_regression, model_path = 'xlm-roberta-base'):
-        super(RobertaRegressor, self).__init__()
+        super(RobertaRegressorWithMetadata, self).__init__()
         
         self.fe = AutoModel.from_pretrained(model_path)
 
@@ -111,7 +113,7 @@ class InfluencerDatasetWithMetadata(torch.utils.data.Dataset):
             'minute'
         ]
         
-        data = pd.read_csv(dataset_path, index_col='id')
+        data = pd.read_csv(dataset_path, index_col=0)
         self.documents = data['content'].values
         self.structured_info = data[structured_cols].values
         if mean is None and std is None:
@@ -123,7 +125,7 @@ class InfluencerDatasetWithMetadata(torch.utils.data.Dataset):
         self.structured_info = (self.structured_info - self.mean) / self.std
         self.structured_info = self.structured_info.astype(np.float32) 
         
-        self.labels = pd.read_csv(labels_path, index_col='id').values
+        self.labels = pd.read_csv(labels_path, index_col=0).values
         self.max_document_length = max_document_length
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         

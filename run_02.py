@@ -83,7 +83,7 @@ if __name__ == "__main__":
             # Gather data and report
             running_loss += loss.item()
 
-            if i % 3000 == 0:
+            if i % 1000 == 0:
                 model.eval()
                 torch.save(model.state_dict(), f'{output_folder}/checkpoints-model-LR-{LR}.pt')
                 model.train()

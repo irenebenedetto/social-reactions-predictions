@@ -11,7 +11,8 @@ import json
 import argparse
 from models import *
 from tqdm import tqdm
-import json 
+import json
+from tqdm import tqdm
 from sklearn.metrics import mean_squared_error, mean_absolute_error, median_absolute_error, mean_absolute_percentage_error
 
 
@@ -59,69 +60,66 @@ if __name__ == "__main__":
     training_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=BATCH_SIZE)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=BATCH_SIZE)
-    criterion = torch.nn.L1Loss(reduce='sum')
+
     optimizer = torch.optim.AdamW(model.parameters(), lr=LR)
    
     writer = SummaryWriter(f'{output_folder}/logs')
     last_l1loss = 1e12
-    """
+
+
     for epoch_index in range(N_EPOCHS):
 
-            model.train()
+        model.train()
 
-            running_loss = 0.0
-            print(f'Epochs {epoch_index + 1}/{N_EPOCHS}')
-            for i, data in tqdm(enumerate(training_loader)):
-                # Every data instance is an input + label pair
-                
+        running_loss = 0.0
+        print(f'Epochs {epoch_index + 1}/{N_EPOCHS}')
+        for i, data in enumerate(training_loader):
+            # Every data instance is an input + label pair
+
+            inputs_text, inputs_str, labels = data
+            labels = labels.type(torch.float)
+
+            optimizer.zero_grad()
+            outputs = model(inputs_text, inputs_str).cpu()
+            loss = myLoss(outputs, labels)
+
+            loss.backward()
+            optimizer.step()
+
+            # Gather data and report
+            running_loss += loss.item()
+
+            if i % 1000 == 0:
+                model.eval()
+                print(f'Saving chechpoints {i}...')
+                torch.save(model.state_dict(), f'{output_folder}/checkpoints-model-LR-{LR}.pt')
+                print(f'Train batch loss: {round(running_loss / ((i + 1) * BATCH_SIZE), 5)}')
+                writer.add_scalar("Loss/train", running_loss / ((i + 1) * BATCH_SIZE), i * (epoch_index + 1))
+                model.train()
+
+        writer.add_scalar("Loss/train", running_loss / ((i + 1) * BATCH_SIZE), i * (epoch_index + 1))
+        model.eval()
+        l1loss = 0.0
+
+        with torch.no_grad():
+            for j, data in enumerate(val_loader):
                 inputs_text, inputs_str, labels = data
                 labels = labels.type(torch.float)
-
-                optimizer.zero_grad()
                 outputs = model(inputs_text, inputs_str).cpu()
+
                 loss = myLoss(outputs, labels)
+                l1loss += loss.item()
 
-                loss.backward()
-                optimizer.step()
+        l1loss = np.mean(l1loss)
+        if l1loss < last_l1loss:
+            last_mse = l1loss
+            print(f'Val loss: {l1loss}')
+            print(f"Saving checkpoint {epoch_index}")
 
-                # Gather data and report
-                running_loss += loss.item()
-         
-                if i % 500 == 0:
-                        model.eval()
-                        print(f'Saving chechpoints {i}...')
-                        torch.save(model.state_dict(), f'{output_folder}/checkpoints-model.pt')
-                        model.train()
-
-            print(f'Train batch loss: {round(running_loss / (i + 1), 5)}')
-            writer.add_scalar("Loss/train", running_loss / (i + 1), epoch_index)
-            
             model.eval()
-            l1loss = 0.0
-
-            with torch.no_grad():
-                for j, data in enumerate(val_loader):
-                    inputs_text, inputs_str, labels = data
-                    labels = labels.type(torch.float)
-
-                    optimizer.zero_grad()
-                    outputs = model(inputs_text, inputs_str).cpu()
-                    loss = myLoss(outputs, labels)
-                    l1loss += loss.item()
-
-
-            
-                l1loss = np.mean(l1loss)
-                if l1loss > last_l1loss:
-                    last_mse = l1loss
-                    print(f"Saving checkpoint {epoch_index}")
-
-                    model.eval()
-                    torch.save(model.state_dict(), f'{output_folder}/best-model.pt')
-                    model.train()
+            torch.save(model.state_dict(), f'{output_folder}/best-model-val-LR-{LR}.pt')
+            model.train()
             print()
-
-    """
     model.eval()
     test_predictions = []
     test_labels = []

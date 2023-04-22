@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 import os
 import json
 import argparse
-from models import *
+from utils.models import *
 from tqdm import tqdm
 import json
 from tqdm import tqdm

@@ -38,14 +38,14 @@ python run_baselines_text_metadata.py --input_folder ./data
 
 In order to train XLM-RoBERTa on textual data, insert the data in a specific folder (i.e. `./data`) and run in the terminal:
 ```bash
-python run_xlm_roberta_text.py --input_folder ./data
+python run_xlm_roberta_text.py --input_data_folder ./data --output_folder ./results
 ```
-
+The model, predictions, and metrics will be stored in `./results`.
 In order to train XLM-RoBERTa on textual data and metadata with the proposed architecture, insert the data in a specific folder (i.e. `./data`) and run in the terminal:
 ```bash
-python run_xlm_roberta_text_metadata.py --input_folder ./data
+python run_xlm_roberta_text_metadata.py --input_data_folder ./data --output_folder ./results
 ```
-
+The model, predictions, and metrics will be stored in `./results`.
 
 
 ## Contributing
